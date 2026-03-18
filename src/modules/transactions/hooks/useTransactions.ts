@@ -1,159 +1,149 @@
-import { startTransition, useEffect, useReducer, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import type {
-  FetchResult,
   PageSize,
   TransactionFilters,
   TransactionSortField,
 } from '../domain/transaction'
-import { fetchTransactions, getTransactionsForExport } from '../data/transactionsServer'
+import { getTransactionsForExport } from '../data/transactionsServer'
 import { buildTransactionsCsv, downloadCsvFile } from '../lib/csv'
 import { buildQueryParams, getDefaultQueryState, parseQueryState } from '../lib/queryParams'
-import { getActiveFilterCount, transactionsReducer } from '../state/transactionsReducer'
-
-const INITIAL_RESULT: FetchResult = {
-  data: [],
-  total: 0,
-  page: 1,
-  pageSize: 10,
-  totalPages: 1,
-}
+import {
+  getTransactionsFilterMetadataPromise,
+  getTransactionsOverviewPromise,
+  getTransactionsTablePromise,
+} from '../lib/transactionsResources'
+import { getActiveFilterCount, useTransactionsStore } from '../state/transactionsStore'
 
 function getInitialState() {
   if (typeof window === 'undefined') {
     return getDefaultQueryState()
   }
 
-  return parseQueryState(window.location.search)
+  const pageSize = useTransactionsStore.getState().pageSize
+  return parseQueryState(window.location.search, getDefaultQueryState(pageSize))
 }
 
 export function useTransactions() {
-  const [state, dispatch] = useReducer(transactionsReducer, undefined, getInitialState)
-  const [result, setResult] = useState<FetchResult>(INITIAL_RESULT)
-  const [isLoading, setIsLoading] = useState(true)
+  const {
+    page,
+    pageSize,
+    filters,
+    searchInput,
+    sort,
+    areFiltersVisible,
+    hydrateFromUrl,
+    setPage,
+    setPageSize,
+    setFilter,
+    setSearchInput,
+    applySearch,
+    clearFilters,
+    toggleSort,
+    toggleFiltersVisibility,
+  } = useTransactionsStore(
+    useShallow((state) => ({
+      page: state.page,
+      pageSize: state.pageSize,
+      filters: state.filters,
+      searchInput: state.searchInput,
+      sort: state.sort,
+      areFiltersVisible: state.areFiltersVisible,
+      hydrateFromUrl: state.hydrateFromUrl,
+      setPage: state.setPage,
+      setPageSize: state.setPageSize,
+      setFilter: state.setFilter,
+      setSearchInput: state.setSearchInput,
+      applySearch: state.applySearch,
+      clearFilters: state.clearFilters,
+      toggleSort: state.toggleSort,
+      toggleFiltersVisibility: state.toggleFiltersVisibility,
+    })),
+  )
   const [isExporting, setIsExporting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
-  const requestIdRef = useRef(0)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => {
+    hydrateFromUrl(getInitialState())
+  }, [hydrateFromUrl])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      dispatch({ type: 'apply-search' })
+      applySearch()
     }, 300)
 
     return () => window.clearTimeout(timeoutId)
-  }, [state.searchInput])
+  }, [applySearch, searchInput])
 
   useEffect(() => {
-    const params = buildQueryParams(state)
+    const params = buildQueryParams({
+      page,
+      pageSize,
+      filters,
+      searchInput,
+      sort,
+    })
     const nextSearch = params.toString()
     const nextUrl = nextSearch ? `${window.location.pathname}?${nextSearch}` : window.location.pathname
 
     window.history.replaceState({}, '', nextUrl)
-    window.localStorage.setItem('transactions-page-size', String(state.pageSize))
-  }, [state])
+  }, [filters, page, pageSize, searchInput, sort])
 
   useEffect(() => {
     function handlePopState() {
-      dispatch({
-        type: 'hydrate',
-        payload: parseQueryState(window.location.search),
-      })
+      const currentPageSize = useTransactionsStore.getState().pageSize
+      hydrateFromUrl(parseQueryState(window.location.search, getDefaultQueryState(currentPageSize)))
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
+  }, [hydrateFromUrl])
 
-  useEffect(() => {
-    const currentRequestId = requestIdRef.current + 1
-    requestIdRef.current = currentRequestId
-    setIsLoading(true)
-    setError(null)
-
-    fetchTransactions({
-      page: state.page,
-      pageSize: state.pageSize,
-      filters: state.filters,
-      sort: state.sort,
-    })
-      .then((nextResult) => {
-        if (requestIdRef.current !== currentRequestId) {
-          return
-        }
-
-        setResult(nextResult)
-
-        if (nextResult.page !== state.page) {
-          startTransition(() => {
-            dispatch({ type: 'set-page', payload: nextResult.page })
-          })
-        }
-      })
-      .catch((caughtError: unknown) => {
-        if (requestIdRef.current !== currentRequestId) {
-          return
-        }
-
-        setError(caughtError instanceof Error ? caughtError.message : 'Ocurrio un error inesperado.')
-      })
-      .finally(() => {
-        if (requestIdRef.current === currentRequestId) {
-          setIsLoading(false)
-        }
-      })
-  }, [retryCount, state.filters, state.page, state.pageSize, state.sort])
-
-  function setFilter<TKey extends keyof TransactionFilters>(key: TKey, value: TransactionFilters[TKey]) {
+  function handleSetFilter<TKey extends keyof TransactionFilters>(key: TKey, value: TransactionFilters[TKey]) {
     startTransition(() => {
-      dispatch({
-        type: 'set-filter',
-        payload: {
-          key,
-          value,
-        },
-      })
+      setFilter(key, value)
     })
   }
 
-  function setSearchInput(value: string) {
+  function handleSetSearchInput(value: string) {
     startTransition(() => {
-      dispatch({ type: 'set-search-input', payload: value })
+      setSearchInput(value)
     })
   }
 
-  function setPage(page: number) {
+  function handleSetPage(page: number) {
     startTransition(() => {
-      dispatch({ type: 'set-page', payload: page })
+      setPage(page)
     })
   }
 
-  function setPageSize(pageSize: PageSize) {
+  function handleSetPageSize(pageSize: PageSize) {
     startTransition(() => {
-      dispatch({ type: 'set-page-size', payload: pageSize })
+      setPageSize(pageSize)
     })
   }
 
-  function clearFilters() {
+  function handleClearFilters() {
     startTransition(() => {
-      dispatch({ type: 'clear-filters' })
+      clearFilters()
     })
   }
 
-  function toggleSort(field: TransactionSortField) {
+  function handleToggleSort(field: TransactionSortField) {
     startTransition(() => {
-      dispatch({ type: 'toggle-sort', payload: field })
+      toggleSort(field)
     })
   }
 
   function retry() {
-    setRetryCount((currentCount) => currentCount + 1)
+    setRefreshKey((currentValue) => currentValue + 1)
   }
 
   async function exportCsv() {
     setIsExporting(true)
 
     try {
-      const transactions = getTransactionsForExport(state.filters, state.sort)
+      const transactions = getTransactionsForExport(filters, sort)
       const csvContent = buildTransactionsCsv(transactions)
       downloadCsvFile(csvContent)
     } finally {
@@ -161,34 +151,52 @@ export function useTransactions() {
     }
   }
 
-  const activeFilterCount = getActiveFilterCount(state.filters)
+  const filtersPromise = useMemo(
+    () => getTransactionsFilterMetadataPromise(refreshKey),
+    [refreshKey],
+  )
+  const overviewPromise = useMemo(
+    () => getTransactionsOverviewPromise(filters, refreshKey),
+    [filters, refreshKey],
+  )
+  const tablePromise = useMemo(
+    () =>
+      getTransactionsTablePromise(
+        {
+          page,
+          pageSize,
+          filters,
+          sort,
+        },
+        refreshKey,
+      ),
+    [filters, page, pageSize, refreshKey, sort],
+  )
+  const activeFilterCount = getActiveFilterCount(filters)
   const hasActiveFilters = activeFilterCount > 0
-  const currentPageStart = result.total === 0 ? 0 : (result.page - 1) * result.pageSize + 1
-  const currentPageEnd = result.total === 0 ? 0 : currentPageStart + result.data.length - 1
 
   return {
-    data: result.data,
-    total: result.total,
-    totalPages: result.totalPages,
-    page: result.page,
-    pageSize: state.pageSize,
-    filters: state.filters,
-    searchInput: state.searchInput,
-    sort: state.sort,
-    isLoading,
+    page,
+    pageSize,
+    filters,
+    searchInput,
+    sort,
+    areFiltersVisible,
     isExporting,
-    error,
     hasActiveFilters,
     activeFilterCount,
-    currentPageStart,
-    currentPageEnd,
+    filtersPromise,
+    overviewPromise,
+    tablePromise,
+    tableResetKey: `${page}:${pageSize}:${refreshKey}:${JSON.stringify(filters)}:${sort.field}:${sort.direction}`,
     retry,
-    clearFilters,
-    setPage,
-    setPageSize,
-    setFilter,
-    setSearchInput,
-    toggleSort,
+    clearFilters: handleClearFilters,
+    setPage: handleSetPage,
+    setPageSize: handleSetPageSize,
+    setFilter: handleSetFilter,
+    setSearchInput: handleSetSearchInput,
+    toggleSort: handleToggleSort,
+    toggleFiltersVisibility,
     exportCsv,
   }
 }

@@ -1,4 +1,5 @@
 import type { Transaction } from '../domain/transaction'
+import { formatTransactionStatus, formatTransactionType } from './formatters'
 
 const CSV_HEADERS = [
   'ID',
@@ -23,8 +24,8 @@ export function buildTransactionsCsv(transactions: Transaction[]) {
       transaction.id,
       transaction.date,
       transaction.description,
-      transaction.type,
-      transaction.status,
+      formatTransactionType(transaction.type),
+      formatTransactionStatus(transaction.status),
       transaction.amount,
       transaction.currency,
       transaction.accountOrigin,

@@ -59,27 +59,20 @@ function parseNumber(value: string | null) {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-function parseStoredPageSize() {
-  if (typeof window === 'undefined') {
-    return DEFAULT_PAGE_SIZE
-  }
-
-  const value = Number(window.localStorage.getItem('transactions-page-size'))
-  return isPageSize(value) ? value : DEFAULT_PAGE_SIZE
-}
-
-export function getDefaultQueryState(): TransactionsQueryState {
+export function getDefaultQueryState(pageSize: PageSize = DEFAULT_PAGE_SIZE): TransactionsQueryState {
   return {
     page: 1,
-    pageSize: parseStoredPageSize(),
+    pageSize,
     filters: {},
     searchInput: '',
     sort: DEFAULT_SORT,
   }
 }
 
-export function parseQueryState(search: string): TransactionsQueryState {
-  const defaults = getDefaultQueryState()
+export function parseQueryState(
+  search: string,
+  defaults: TransactionsQueryState = getDefaultQueryState(),
+): TransactionsQueryState {
   const params = new URLSearchParams(search)
   const page = Number(params.get('page'))
   const pageSize = Number(params.get('pageSize'))

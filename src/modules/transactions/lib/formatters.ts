@@ -40,7 +40,7 @@ export function formatTransactionAmount(amount: number, currency: Currency) {
     case 'CLP':
       return clpFormatter.format(amount)
     case 'BTC':
-      return `₿${btcFormatter.format(amount)}`
+      return `\u20bf${btcFormatter.format(amount)}`
   }
 }
 
@@ -55,10 +55,10 @@ export function formatTransactionType(type: TransactionType) {
 export function formatTransactionStatus(status: TransactionStatus) {
   switch (status) {
     case 'completed':
-      return 'Completado'
+      return 'Completada'
     case 'pending':
       return 'Pendiente'
     case 'failed':
-      return 'Fallido'
+      return 'Fallida'
   }
 }

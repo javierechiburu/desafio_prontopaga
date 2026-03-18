@@ -54,3 +54,25 @@ export interface FetchResult {
   pageSize: number
   totalPages: number
 }
+
+export interface TransactionAmountSnapshot {
+  amount: number
+  currency: Currency
+}
+
+export interface TransactionsOverview {
+  largestCredit: TransactionAmountSnapshot | null
+  largestDebit: TransactionAmountSnapshot | null
+  activeAccounts: number
+  completionRate: number
+  total: number
+}
+
+export interface TransactionsFilterMetadata {
+  quickRanges: Array<{
+    id: 'last30' | 'quarter' | 'year'
+    label: string
+    description: string
+  }>
+  helperText: string
+}

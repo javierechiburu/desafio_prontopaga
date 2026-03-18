@@ -3,6 +3,8 @@ import {
   type FetchResult,
   type Transaction,
   type TransactionFilters,
+  type TransactionsFilterMetadata,
+  type TransactionsOverview,
   type TransactionSort,
 } from '../domain/transaction'
 import { mockTransactions } from './mockTransactions'
@@ -68,6 +70,72 @@ export function sortTransactions(transactions: Transaction[], sort: TransactionS
 export function getTransactionsForExport(filters: TransactionFilters, sort: TransactionSort) {
   const filtered = filterTransactions(mockTransactions, filters)
   return sortTransactions(filtered, sort)
+}
+
+function resolveAfterDelay<TValue>(callback: () => TValue, delay: number) {
+  return new Promise<TValue>((resolve) => {
+    window.setTimeout(() => {
+      resolve(callback())
+    }, delay)
+  })
+}
+
+export function fetchTransactionsFilterMetadata() {
+  return resolveAfterDelay<TransactionsFilterMetadata>(
+    () => ({
+      quickRanges: [
+        {
+          id: 'last30',
+          label: 'Ultimos 30 dias',
+          description: 'Monitorea actividad reciente',
+        },
+        {
+          id: 'quarter',
+          label: 'Este trimestre',
+          description: 'Seguimiento operativo del trimestre',
+        },
+        {
+          id: 'year',
+          label: 'Ultimos 12 meses',
+          description: 'Auditoria y trazabilidad anual',
+        },
+      ],
+      helperText: 'Los filtros se sincronizan automaticamente con la URL y el tamano de pagina queda persistido.',
+    }),
+    260,
+  )
+}
+
+export function fetchTransactionsOverview(filters: TransactionFilters) {
+  return resolveAfterDelay<TransactionsOverview>(() => {
+    const filtered = filterTransactions(mockTransactions, filters)
+    const largestCredit = filtered
+      .filter((transaction) => transaction.type === 'credit')
+      .toSorted((left, right) => right.amount - left.amount)[0]
+    const largestDebit = filtered
+      .filter((transaction) => transaction.type === 'debit')
+      .toSorted((left, right) => right.amount - left.amount)[0]
+    const completedTransactions = filtered.filter((transaction) => transaction.status === 'completed').length
+    const uniqueAccounts = new Set(filtered.map((transaction) => transaction.accountOrigin))
+
+    return {
+      largestCredit: largestCredit
+        ? {
+            amount: largestCredit.amount,
+            currency: largestCredit.currency,
+          }
+        : null,
+      largestDebit: largestDebit
+        ? {
+            amount: largestDebit.amount,
+            currency: largestDebit.currency,
+          }
+        : null,
+      activeAccounts: uniqueAccounts.size,
+      completionRate: filtered.length === 0 ? 0 : Math.round((completedTransactions / filtered.length) * 100),
+      total: filtered.length,
+    }
+  }, 340)
 }
 
 export function fetchTransactions({ page, pageSize, filters, sort }: FetchParams) {

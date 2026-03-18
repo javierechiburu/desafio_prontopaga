@@ -1,81 +1,89 @@
-import type { PageSize } from '../domain/transaction'
+import type { PageSize } from "../domain/transaction";
 
 interface TransactionsPaginationProps {
-  page: number
-  totalPages: number
-  pageSize: PageSize
-  pageSizeOptions: readonly PageSize[]
-  onPageChange: (page: number) => void
-  onPageSizeChange: (pageSize: PageSize) => void
+  page: number;
+  totalPages: number;
+  pageSize: PageSize;
+  total: number;
+  currentPageStart: number;
+  currentPageEnd: number;
+  onPageChange: (page: number) => void;
 }
 
 function getVisiblePages(page: number, totalPages: number) {
-  const firstPage = Math.max(1, page - 1)
-  const lastPage = Math.min(totalPages, page + 1)
-  const pages = []
+  const firstPage = Math.max(1, page - 1);
+  const lastPage = Math.min(totalPages, page + 2);
+  const pages: number[] = [];
 
   for (let currentPage = firstPage; currentPage <= lastPage; currentPage += 1) {
-    pages.push(currentPage)
+    pages.push(currentPage);
   }
 
   if (!pages.includes(1)) {
-    pages.unshift(1)
+    pages.unshift(1);
   }
 
   if (!pages.includes(totalPages)) {
-    pages.push(totalPages)
+    pages.push(totalPages);
   }
 
-  return pages
+  return pages;
 }
 
 export function TransactionsPagination({
   page,
   totalPages,
   pageSize,
-  pageSizeOptions,
+  total,
+  currentPageStart,
+  currentPageEnd,
   onPageChange,
-  onPageSizeChange,
 }: TransactionsPaginationProps) {
-  const visiblePages = getVisiblePages(page, totalPages)
+  const pages = getVisiblePages(page, totalPages);
 
   return (
-    <footer className="pagination-bar">
-      <label className="pagination-page-size">
-        <span>Registros por pagina</span>
-        <select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value) as PageSize)}>
-          {pageSizeOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
+    <footer className="flex flex-col gap-4 border-t border-slate-100 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="text-sm text-ink-500">
+        <span>Mostrar por pagina</span>
+        <strong className="ml-2 text-ink-950">{pageSize}</strong>
+      </div>
 
-      <div className="pagination-controls" aria-label="Paginacion">
-        <button className="ghost-button" onClick={() => onPageChange(page - 1)} disabled={page === 1} type="button">
-          Anterior
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <button
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-ink-700 transition hover:border-brand-200 hover:text-brand-700 disabled:opacity-40"
+          disabled={page === 1}
+          onClick={() => onPageChange(page - 1)}
+          type="button"
+        >
+          {"<"}
         </button>
-        {visiblePages.map((visiblePage) => (
+        {pages.map((visiblePage) => (
           <button
             key={visiblePage}
-            className={`page-chip${visiblePage === page ? ' page-chip--active' : ''}`}
+            className={`inline-flex h-10 min-w-10 items-center justify-center rounded-full px-3 text-sm font-semibold transition ${
+              visiblePage === page
+                ? "bg-linear-to-r from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-200"
+                : "border border-slate-200 bg-slate-50 text-ink-700 hover:border-brand-200 hover:text-brand-700"
+            }`}
             onClick={() => onPageChange(visiblePage)}
-            aria-current={visiblePage === page ? 'page' : undefined}
             type="button"
           >
             {visiblePage}
           </button>
         ))}
         <button
-          className="ghost-button"
-          onClick={() => onPageChange(page + 1)}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-ink-700 transition hover:border-brand-200 hover:text-brand-700 disabled:opacity-40"
           disabled={page === totalPages}
+          onClick={() => onPageChange(page + 1)}
           type="button"
         >
-          Siguiente
+          {">"}
         </button>
       </div>
+
+      <div className="text-sm text-ink-500">
+        Mostrando {currentPageStart}-{currentPageEnd} de {total} resultados
+      </div>
     </footer>
-  )
+  );
 }

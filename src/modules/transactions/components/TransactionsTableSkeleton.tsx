@@ -1,31 +1,30 @@
-const SKELETON_ROWS = 10
+interface TransactionsTableSkeletonProps {
+  rowCount?: number;
+}
 
-export function TransactionsTableSkeleton() {
+export function TransactionsTableSkeleton({
+  rowCount = 5,
+}: TransactionsTableSkeletonProps) {
   return (
-    <div className="table-shell" aria-hidden="true">
-      <table className="transactions-table transactions-table--skeleton">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Descripcion</th>
-            <th>Tipo</th>
-            <th>Estado</th>
-            <th>Monto</th>
-            <th>Cuenta origen</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: SKELETON_ROWS }, (_, index) => (
-            <tr key={index}>
-              {Array.from({ length: 6 }, (_, cellIndex) => (
-                <td key={cellIndex}>
-                  <span className="skeleton-block" />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
+    <section
+      className="rounded-4xl border border-white/70 bg-white/90 p-6 shadow-soft"
+      aria-hidden="true"
+    >
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="h-4 w-32 animate-pulse rounded-full bg-slate-200" />
+        <div className="h-4 w-48 animate-pulse rounded-full bg-slate-200" />
+      </div>
+      <div className="mt-6 space-y-4">
+        {Array.from({ length: rowCount }, (_, rowIndex) => (
+          <div key={rowIndex} className="grid grid-cols-5 gap-4">
+            <div className="h-4 animate-pulse rounded-full bg-slate-200" />
+            <div className="h-4 animate-pulse rounded-full bg-slate-200" />
+            <div className="h-4 animate-pulse rounded-full bg-slate-200" />
+            <div className="h-4 animate-pulse rounded-full bg-slate-200" />
+            <div className="h-4 animate-pulse rounded-full bg-slate-200" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }

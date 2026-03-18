@@ -1,14 +1,15 @@
 # Desafio 3 - Tabla de Movimientos Bancarios
 
-Aplicacion React + TypeScript construida sobre Vite para visualizar el historial de transacciones de un banco digital. Incluye filtros sincronizados con la URL, paginacion server-side simulada, exportacion CSV, estados de carga/error/vacio y tests unitarios.
+Aplicacion React + TypeScript construida sobre Vite para visualizar el historial de transacciones de un banco digital. Incluye un shell transversal con sidebar y topbar, filtros sincronizados con la URL, paginacion server-side simulada, exportacion CSV, Suspense por secciones y tests unitarios.
 
 ## Stack
 
 - React 19
+- Zustand
 - TypeScript estricto
 - Vite 8
 - Vitest + Testing Library
-- CSS modularizado por responsabilidad de pantalla
+- Suspense + Error Boundaries
 
 ## Como correr el proyecto
 
@@ -33,19 +34,24 @@ Scripts disponibles:
 - Paginacion simulada con delay de 600ms y error aleatorio del 10%
 - Exportacion CSV usando solo los registros filtrados
 - Ordenamiento por fecha y monto
-- Tooltip para visualizar la cuenta destino
-- Persistencia de `pageSize` en `localStorage`
+- Store con Zustand y persistencia de `pageSize` / visibilidad de filtros
+- Shell transversal reutilizable para el sitio
+- Suspense independiente para resumen, filtros y tabla
 - Skeleton loaders, empty state y retry state
 
 ## Arquitectura
 
-La solucion esta organizada por capas dentro de `src/modules/transactions`:
+La solucion esta organizada por modulos:
+
+- `src/modules/shell`: shell transversal del sitio
+- `src/modules/shared`: boundaries y componentes reutilizables
+- `src/modules/transactions`: dominio, store, recursos async y UI del modulo
 
 - `domain`: tipos, contratos y constantes del modulo
 - `data`: dataset mock y servidor simulado
-- `state`: reducer para filtros, busqueda y sorting
-- `hooks`: `useTransactions`, que centraliza fetch, paginacion, URL sync y exportacion
-- `lib`: helpers de formateo, CSV y query params
+- `state`: store con Zustand y persistencia
+- `hooks`: `useTransactions`, que centraliza filtros, URL sync, recursos async y exportacion
+- `lib`: helpers de formateo, CSV, query params y recursos para Suspense
 - `components`: composicion visual del modulo
 
 Esta separacion busca mantener una frontera clara entre reglas de negocio, acceso a datos y UI.
@@ -55,6 +61,7 @@ Esta separacion busca mantener una frontera clara entre reglas de negocio, acces
 - El servidor mock aplica filtros y ordenamiento antes de paginar para emular un backend real.
 - Cuando cambia un filtro o el orden, la pagina vuelve a `1`.
 - El export CSV no toma solo la pagina actual: exporta todos los movimientos que coinciden con los filtros activos.
+- Las secciones de resumen, filtros y tabla cargan de forma independiente con Suspense.
 - El error aleatorio del 10% es intencional para probar la resiliencia de la UI.
 
 ## Tests incluidos

@@ -1,4 +1,3 @@
-import './App.css'
 import { TransactionsPage } from './modules/transactions/components/TransactionsPage'
 
 function App() {
